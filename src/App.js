@@ -2,7 +2,7 @@ import { Component } from "react";
 import ImageLinkForm from "./components/ImageLinkForm/ImageLinkForm";
 import Logo from "./components/Logo/Logo";
 import Navigation from "./components/Navigation/Navigation";
-import Rank from "./components/Rank/Rank";
+// import Rank from "./components/Rank/Rank";
 import ParticlesBg from "particles-bg";
 import "./App.css";
 import Clarifai from "clarifai";
@@ -23,8 +23,27 @@ class App extends Component {
       box: {},
       route: "signin",
       isSignedIn: false,
+      user: {
+        id: "",
+        name: "",
+        email: "",
+        entries: 0,
+        joined: "",
+      },
     };
   }
+
+  loadUser = (data) => {
+    this.setState({
+      user: {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        entries: data.entries,
+        joined: data.joined,
+      },
+    });
+  };
 
   calculateFaceLocation = (data) => {
     const clarifaiFace =
@@ -51,6 +70,19 @@ class App extends Component {
     app.models
       .predict("face-detection", this.state.input)
       .then((response) => {
+        if (response) {
+          fetch("http://localhost:5000/image", {
+            method: "put",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: this.state.user.id,
+            }),
+          })
+            .then((response) => response.json())
+            .then((count) => {
+              this.setState(Object.assign(this.state.user, { entries: count }));
+            });
+        }
         this.displayFaceBox(this.calculateFaceLocation(response));
       })
       .catch((err) => console.log(err));
@@ -73,7 +105,7 @@ class App extends Component {
   render() {
     return (
       <div className="App">
-        <ParticlesBg type="fountain" bg={true} />
+        <ParticlesBg num={1} type="color" bg={true} />
         <Navigation
           isSignedIn={this.state.isSignedIn}
           onRouteChange={this.onRouteChange}
@@ -81,7 +113,10 @@ class App extends Component {
         {this.state.route === "home" ? (
           <>
             <Logo />
-            <Rank />
+            {/* <Rank
+              name={this.state.user.name}
+              entries={this.state.user.entries}
+            /> */}
             <ImageLinkForm
               onButtonSubmit={this.onButtonSubmit}
               onInputChange={this.onInputChange}
@@ -94,7 +129,10 @@ class App extends Component {
         ) : this.state.route === "signin" ? (
           <Signin onRouteChange={this.onRouteChange} />
         ) : (
-          <Register onRouteChange={this.onRouteChange} />
+          <Register
+            loadUser={this.loadUser}
+            onRouteChange={this.onRouteChange}
+          />
         )}
       </div>
     );
